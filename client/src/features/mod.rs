@@ -14,6 +14,6 @@ pub trait AsyncClipboard {
     where
         Self: Sized;
 
-    async fn get(&mut self) -> anyhow::Result<String>;
+    async fn get_new(&mut self) -> anyhow::Result<String>;
     async fn set(&mut self, _: String) -> anyhow::Result<()>;
 }

@@ -1,3 +1,5 @@
+use std::io::ErrorKind;
+
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
 
@@ -40,9 +42,13 @@ impl MessageStream {
         self.inner.write(&serde_json::to_vec(&msg)?).await
     }
 
-    pub async fn recv(&mut self) -> anyhow::Result<Message> {
+    pub async fn recv(&mut self) -> std::io::Result<Message> {
         let mut buffer = [0; 2048];
         let len = self.inner.read(&mut buffer).await?;
-        Ok(serde_json::from_slice(&buffer[..len])?)
+        match serde_json::from_slice::<Message>(&buffer[..len]) {
+            Ok(m) => Ok(m),
+            Err(e) if e.is_eof() => Err(std::io::Error::new(ErrorKind::UnexpectedEof, e)),
+            Err(e) => Err(std::io::Error::new(ErrorKind::InvalidInput, e)),
+        }
     }
 }

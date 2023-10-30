@@ -16,13 +16,21 @@ async fn main() {
         .await
         .unwrap();
 
-    tokio::spawn(async move { client.run().await.unwrap() });
+    let thread_handle = tokio::spawn(async move { client.run().await.expect("Hello from thread") });
 
     let mut client = Client::<copypasta::ClipboardContext>::new(handle)
         .await
         .unwrap();
 
     client.start().await.expect("yeah here");
+
+    client
+        .handle
+        .send(ID::Master, MessageKind::Close, String::new())
+        .await
+        .unwrap();
+
+    thread_handle.await.unwrap();
 }
 
 struct Client<T>
@@ -46,6 +54,7 @@ where
 
         let other_devices_msg = handle.recv().await.unwrap();
         let other_devices: Vec<ID> = serde_json::from_str(&other_devices_msg.body)?;
+        println!("{:#?}", other_devices);
         let clipboard = AsyncClipboard::new().await?;
 
         Ok(Client {
@@ -59,12 +68,18 @@ where
     async fn start(&mut self) -> anyhow::Result<()> {
         loop {
             tokio::select! {
+                _ = tokio::signal::ctrl_c() => {
+                    return Ok(())
+                },
+
                 res = self.handle.recv() => {
                     self.handle_message(res.unwrap()).await?;
                 },
 
-                res = self.clipboard.get() => {
+                res = self.clipboard.get_new() => {
                     let s = res?;
+
+                    println!("Got clipboard");
 
                     if s == self.old_clipboard_content {
                         continue;
@@ -79,6 +94,7 @@ where
     }
 
     async fn handle_message(&mut self, msg: Message) -> anyhow::Result<()> {
+        println!("Received message");
         match msg.header.kind {
             MessageKind::Clipboard => self.clipboard.set(msg.body).await?,
             _ => {}

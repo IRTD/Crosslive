@@ -1,4 +1,5 @@
 use cross_messages::*;
+use std::io::ErrorKind;
 use tokio::{net::ToSocketAddrs, sync::mpsc};
 
 pub struct CrossClient {
@@ -55,6 +56,17 @@ impl CrossHandle {
         Ok(())
     }
 
+    pub fn blocking_send(&self, to: ID, kind: MessageKind, body: String) -> anyhow::Result<()> {
+        let header = Header { kind, target: to };
+        let tail = Tail {
+            from: self.registered_id.clone(),
+        };
+        let message = Message { header, body, tail };
+
+        self.tx.blocking_send(message)?;
+        Ok(())
+    }
+
     pub async fn recv(&mut self) -> Option<Message> {
         self.rx.recv().await
     }
@@ -71,7 +83,17 @@ impl RegisteredClient {
         loop {
             tokio::select! {
                 res = self.master_stream.recv() => {
-                    self.tx.send(res?).await?;
+                    let msg: Message = match res {
+                        Ok(m) => m,
+                        Err(ref e) if e.kind() == ErrorKind::UnexpectedEof => return Ok(()),
+                        Err(e) => return Err(e.into())
+                    };
+                    if msg.header.kind == MessageKind::Close {
+                        self.tx.send(msg).await?;
+                        return Ok(());
+                    }
+
+                    self.tx.send(msg).await?;
                 },
 
                 res = self.rx.recv() => {
