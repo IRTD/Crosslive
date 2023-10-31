@@ -55,8 +55,6 @@ where
 
         let other_devices_msg = handle.recv().await.unwrap();
         let other_devices: Vec<ID> = serde_json::from_str(&other_devices_msg.body)?;
-        println!("{:#?}", handle.registered_id);
-        println!("{:#?}", other_devices);
         let clipboard = AsyncClipboard::new().await?;
 
         Ok(Client {
@@ -104,7 +102,6 @@ where
             }
             _ => {}
         }
-        println!("{:#?}", self.other_devices);
 
         Ok(())
     }
