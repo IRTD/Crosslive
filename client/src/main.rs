@@ -5,6 +5,7 @@ use client_lib::*;
 use cross_messages::*;
 
 use features::AsyncClipboard;
+use features::clipboard;
 
 #[tokio::main]
 async fn main() {
@@ -22,6 +23,9 @@ async fn main() {
     let mut client = Client::<copypasta::ClipboardContext>::new(handle)
         .await
         .unwrap();
+
+    #[cfg(target_os = "windows")]
+    let mut client = Client::<clipboard::WindowsClipboardWrapper>::new(handle).await.unwrap();
 
     client.start().await.expect("yeah here");
 
