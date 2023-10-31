@@ -13,6 +13,10 @@ impl MasterConfig {
     }
 
     pub fn get() -> Result<Self, config::ConfigError> {
+        if let Ok(v) = std::env::var("CROSSCONFIG") {
+            return Self::get_from(&v);
+        }
+
         let path = format!(
             "{}/master_config.toml",
             dirs::config_local_dir()
