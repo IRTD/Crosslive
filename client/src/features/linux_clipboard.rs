@@ -1,8 +1,7 @@
-use std::time::Duration;
+use super::AsyncClipboard;
 
 use copypasta::{ClipboardContext, ClipboardProvider};
-
-use super::AsyncClipboard;
+use std::time::Duration;
 
 #[async_trait::async_trait]
 impl AsyncClipboard for copypasta::ClipboardContext {
@@ -11,7 +10,7 @@ impl AsyncClipboard for copypasta::ClipboardContext {
     }
 
     async fn get_new(&mut self) -> anyhow::Result<String> {
-        let mut start_content = self.get_contents().unwrap();
+        let start_content = self.get_contents().unwrap();
         loop {
             let c = self.get_contents().unwrap();
             if c == start_content {

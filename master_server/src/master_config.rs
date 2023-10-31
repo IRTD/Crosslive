@@ -13,7 +13,7 @@ impl MasterConfig {
     }
 
     pub fn get() -> Result<Self, config::ConfigError> {
-        let mut path = format!(
+        let path = format!(
             "{}/master_config.toml",
             dirs::config_local_dir()
                 .unwrap()

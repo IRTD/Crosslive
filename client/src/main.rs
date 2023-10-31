@@ -18,6 +18,7 @@ async fn main() {
 
     let thread_handle = tokio::spawn(async move { client.run().await.expect("Hello from thread") });
 
+    #[cfg(target_os = "linux")]
     let mut client = Client::<copypasta::ClipboardContext>::new(handle)
         .await
         .unwrap();
@@ -79,8 +80,6 @@ where
                 res = self.clipboard.get_new() => {
                     let s = res?;
 
-                    println!("Got clipboard");
-
                     if s == self.old_clipboard_content {
                         continue;
                     }
@@ -94,7 +93,6 @@ where
     }
 
     async fn handle_message(&mut self, msg: Message) -> anyhow::Result<()> {
-        println!("Received message");
         match msg.header.kind {
             MessageKind::Clipboard => self.clipboard.set(msg.body).await?,
             _ => {}
