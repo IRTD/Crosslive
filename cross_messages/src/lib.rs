@@ -49,7 +49,7 @@ impl ID {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Copy)]
 pub enum MessageKind {
     // Handled by Master
     Register,
@@ -60,6 +60,8 @@ pub enum MessageKind {
     // Bounced to the target
     // ----------------------
     Clipboard,
+    NewRegDevice,
+    ClosedRegDevice,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
