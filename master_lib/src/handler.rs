@@ -62,6 +62,7 @@ pub async fn default_register(ctx: &mut Context<'_>) -> anyhow::Result<()> {
     };
 
     ctx.broadcast.send(msg)?;
+    inform_update_reg(ctx, MessageKind::NewRegDevice).await?;
     Ok(())
 }
 
@@ -108,6 +109,26 @@ pub async fn default_close(ctx: &mut Context<'_>) -> anyhow::Result<()> {
         Some(i) => write_reg.remove(i),
         None => return Err(anyhow::anyhow!("ID Not In Register")),
     };
+
+    drop(write_reg);
+    inform_update_reg(ctx, MessageKind::ClosedRegDevice).await?;
+
+    Ok(())
+}
+
+pub async fn inform_update_reg(ctx: &mut Context<'_>, kind: MessageKind) -> anyhow::Result<()> {
+    let reg = ctx.register.read().await;
+    for id in reg.iter().filter(|i| i != &ctx.id_ref) {
+        let header = Header {
+            target: id.clone(),
+            kind,
+        };
+        let tail = Tail { from: ID::Master };
+        let body = serde_json::to_string(&ctx.id_ref)?;
+        let msg = Message { header, tail, body };
+
+        ctx.broadcast.send(msg)?;
+    }
 
     Ok(())
 }

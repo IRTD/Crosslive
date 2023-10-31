@@ -55,6 +55,7 @@ where
 
         let other_devices_msg = handle.recv().await.unwrap();
         let other_devices: Vec<ID> = serde_json::from_str(&other_devices_msg.body)?;
+        println!("{:#?}", handle.registered_id);
         println!("{:#?}", other_devices);
         let clipboard = AsyncClipboard::new().await?;
 
@@ -95,9 +96,24 @@ where
     async fn handle_message(&mut self, msg: Message) -> anyhow::Result<()> {
         match msg.header.kind {
             MessageKind::Clipboard => self.clipboard.set(msg.body).await?,
+            MessageKind::NewRegDevice => {
+                self.other_devices.push(serde_json::from_str(&msg.body)?);
+            }
+            MessageKind::ClosedRegDevice => {
+                remove_on_match(&mut self.other_devices, &serde_json::from_str(&msg.body)?)
+            }
             _ => {}
         }
+        println!("{:#?}", self.other_devices);
 
         Ok(())
+    }
+}
+
+fn remove_on_match(v: &mut Vec<ID>, target: &ID) {
+    for (index, item) in v.clone().iter().enumerate() {
+        if item == target {
+            v.remove(index);
+        }
     }
 }
