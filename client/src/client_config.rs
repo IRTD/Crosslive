@@ -20,6 +20,10 @@ impl ClientConfig {
     }
 
     pub fn get() -> Result<Self, config::ConfigError> {
+        if let Ok(v) = std::env::var("CROSSCONFIG") {
+            return Self::get_from(&v);
+        }
+
         let path = format!(
             "{}/crosslive_client.toml",
             dirs::config_local_dir()

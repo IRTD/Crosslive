@@ -5,6 +5,8 @@ use client_lib::*;
 use cross_messages::*;
 
 use features::AsyncClipboard;
+
+#[cfg(target_os = "windows")]
 use features::clipboard;
 
 #[tokio::main]
@@ -19,15 +21,11 @@ async fn main() {
 
     let thread_handle = tokio::spawn(async move { client.run().await.expect("Hello from thread") });
 
-    #[cfg(target_os = "linux")]
-    let mut client = Client::<copypasta::ClipboardContext>::new(handle)
-        .await
-        .unwrap();
+    let mut client = Client::new(handle).await.unwrap();
 
-    #[cfg(target_os = "windows")]
-    let mut client = Client::<clipboard::WindowsClipboardWrapper>::new(handle).await.unwrap();
-
-    client.start().await.expect("yeah here");
+    if let Err(e) = client.start().await {
+        eprintln!("{}", e);
+    }
 
     client
         .handle
@@ -52,23 +50,6 @@ impl<T> Client<T>
 where
     T: AsyncClipboard,
 {
-    async fn new(mut handle: CrossHandle) -> anyhow::Result<Self> {
-        handle
-            .send(ID::Master, MessageKind::GetRegDevices, String::new())
-            .await?;
-
-        let other_devices_msg = handle.recv().await.unwrap();
-        let other_devices: Vec<ID> = serde_json::from_str(&other_devices_msg.body)?;
-        let clipboard = AsyncClipboard::new().await?;
-
-        Ok(Client {
-            handle,
-            clipboard,
-            old_clipboard_content: String::new(),
-            other_devices,
-        })
-    }
-
     async fn start(&mut self) -> anyhow::Result<()> {
         loop {
             tokio::select! {
@@ -107,7 +88,49 @@ where
             _ => {}
         }
 
+        println!("{:#?}", self.other_devices);
+
         Ok(())
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl Client<copypasta::ClipboardContext> {
+    async fn new(mut handle: CrossHandle) -> anyhow::Result<Self> {
+        handle
+            .send(ID::Master, MessageKind::GetRegDevices, String::new())
+            .await?;
+
+        let other_devices_msg = handle.recv().await.unwrap();
+        let other_devices: Vec<ID> = serde_json::from_str(&other_devices_msg.body)?;
+        let clipboard = AsyncClipboard::new().await?;
+
+        Ok(Client {
+            handle,
+            clipboard,
+            old_clipboard_content: String::new(),
+            other_devices,
+        })
+    }
+}
+
+#[cfg(target_os = "windows")]
+impl Client<clipboard::WindowsClipboardWrapper> {
+    async fn new(mut handle: CrossHandle) -> anyhow::Result<Self> {
+        handle
+            .send(ID::Master, MessageKind::GetRegDevices, String::new())
+            .await?;
+
+        let other_devices_msg = handle.recv().await.unwrap();
+        let other_devices: Vec<ID> = serde_json::from_str(&other_devices_msg.body)?;
+        let clipboard = AsyncClipboard::new().await?;
+
+        Ok(Client {
+            handle,
+            clipboard,
+            old_clipboard_content: String::new(),
+            other_devices,
+        })
     }
 }
 

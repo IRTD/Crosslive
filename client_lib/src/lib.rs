@@ -16,11 +16,8 @@ impl CrossClient {
     pub async fn register(mut self) -> anyhow::Result<(RegisteredClient, CrossHandle)> {
         let reg_msg = Message::register();
         self.master_stream.send(reg_msg).await?;
-        println!("Send to master");
         let repl = self.master_stream.recv().await?;
-        println!("Got reply");
         let registered_id = ID::from_register_reply(repl)?;
-        println!("Made register ID");
 
         let (reg_tx, rx) = mpsc::channel::<Message>(16);
         let (tx, reg_rx) = mpsc::channel::<Message>(16);
