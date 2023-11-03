@@ -2,14 +2,42 @@ mod master_config;
 
 #[tokio::main]
 async fn main() {
-    let config = master_config::MasterConfig::get().unwrap();
+    crosslogging::init_fern_logger().unwrap();
 
-    let mut server = master_lib::MasterServer::new(
+    let config = match master_config::MasterConfig::get() {
+        Ok(c) => c,
+        Err(e) => {
+            log::error!("Failed to load Config due to {}", e);
+            std::process::exit(1)
+        }
+    };
+
+    log::info!("Loaded config");
+
+    log::info!(
+        "Creating new Server Instance with IpV4 Address {}",
+        config.master_addr()
+    );
+
+    let mut server = match master_lib::MasterServer::new(
         config.master_addr(),
         master_lib::handler::DefaultMessageHandler,
     )
     .await
-    .unwrap();
+    {
+        Ok(s) => s,
+        Err(e) => {
+            log::error!("Failed to create Server Instance due to {}", e);
+            std::process::exit(2);
+        }
+    };
 
-    server.run().await.unwrap();
+    log::info!("Starting Server Instance");
+    match server.run().await {
+        Ok(_) => log::info!("Server closed"),
+        Err(e) => {
+            log::info!("Internal Server error {}", e);
+            std::process::exit(3);
+        }
+    }
 }

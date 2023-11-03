@@ -14,10 +14,13 @@ impl CrossClient {
     }
 
     pub async fn register(mut self) -> anyhow::Result<(RegisteredClient, CrossHandle)> {
+        log::info!("Attempting to Register to Master Server");
         let reg_msg = Message::register();
         self.master_stream.send(reg_msg).await?;
         let repl = self.master_stream.recv().await?;
         let registered_id = ID::from_register_reply(repl)?;
+
+        log::info!("Registered with {:?}", registered_id);
 
         let (reg_tx, rx) = mpsc::channel::<Message>(16);
         let (tx, reg_rx) = mpsc::channel::<Message>(16);
@@ -52,6 +55,8 @@ impl CrossHandle {
         };
         let message = Message { header, body, tail };
 
+        log::info!("Sending {:#?}", message);
+
         self.tx.send(message).await?;
         Ok(())
     }
@@ -62,6 +67,8 @@ impl CrossHandle {
             from: self.registered_id.clone(),
         };
         let message = Message { header, body, tail };
+
+        log::info!("Sending {:#?}", message);
 
         self.tx.blocking_send(message)?;
         Ok(())
@@ -88,6 +95,8 @@ impl RegisteredClient {
                         Err(ref e) if e.kind() == ErrorKind::UnexpectedEof => return Ok(()),
                         Err(e) => return Err(e.into())
                     };
+                    log::info!("New from Master {:#?}", msg);
+
                     if msg.header.kind == MessageKind::Close {
                         self.tx.send(msg).await?;
                         return Ok(());

@@ -11,27 +11,38 @@ use features::clipboard;
 
 #[tokio::main]
 async fn main() {
+    crosslogging::init_fern_logger().unwrap();
+
     let config = client_config::ClientConfig::get().unwrap();
     let (mut client, handle) = CrossClient::new(config.master_addr())
         .await
-        .unwrap()
+        .unwrap_or_else(|e| {
+            log::error!("Failed to connect to Master Server due to '{}'", e);
+            std::process::exit(1);
+        })
         .register()
         .await
-        .unwrap();
+        .unwrap_or_else(|e| {
+            log::error!("Failed to register at Master Server due to '{}'", e);
+            std::process::exit(2);
+        });
 
     let thread_handle = tokio::spawn(async move { client.run().await.expect("Hello from thread") });
 
     let mut client = Client::new(handle).await.unwrap();
 
     if let Err(e) = client.start().await {
-        eprintln!("{}", e);
+        log::error!("Interal Client error '{}'", e);
     }
 
     client
         .handle
         .send(ID::Master, MessageKind::Close, String::new())
         .await
-        .unwrap();
+        .unwrap_or_else(|e| {
+            log::error!("Failed to properly Close due to '{}'", e);
+            std::process::exit(3);
+        });
 
     thread_handle.await.unwrap();
 }
@@ -58,7 +69,10 @@ where
                 },
 
                 res = self.handle.recv() => {
-                    self.handle_message(res.unwrap()).await?;
+                    match res {
+                        Some(msg) => self.handle_message(msg).await?,
+                        None => return Err(anyhow::anyhow!("None from handler.recv()"))
+                    }
                 },
 
                 res = self.clipboard.get_new() => {
@@ -88,7 +102,7 @@ where
             _ => {}
         }
 
-        println!("{:#?}", self.other_devices);
+        log::debug!("Peers:\n{:#?}", self.other_devices);
 
         Ok(())
     }
@@ -104,6 +118,8 @@ impl Client<copypasta::ClipboardContext> {
         let other_devices_msg = handle.recv().await.unwrap();
         let other_devices: Vec<ID> = serde_json::from_str(&other_devices_msg.body)?;
         let clipboard = AsyncClipboard::new().await?;
+
+        log::debug!("Peers:\n{:#?}", other_devices);
 
         Ok(Client {
             handle,

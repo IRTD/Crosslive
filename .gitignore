@@ -8,4 +8,5 @@ master_lib/Cargo.lock
 master_lib/target
 master_server/Cargo.lock
 master_server/target
-
+crosslogging/target
+crosslogging/Cargo.lock

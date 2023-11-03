@@ -21,6 +21,7 @@ impl MessageHandler for DefaultMessageHandler {
     async fn handle(&mut self, mut ctx: Context<'_>) -> anyhow::Result<()> {
         match ctx.message.header.kind {
             MessageKind::Register => {
+                log::info!("Registering new Device");
                 default_register(&mut ctx).await?;
             }
 
@@ -29,6 +30,7 @@ impl MessageHandler for DefaultMessageHandler {
             }
 
             MessageKind::Close => {
+                log::info!("Closing Connection to {:#?}", ctx.id_ref);
                 default_close(&mut ctx).await?;
                 return Err(anyhow::anyhow!("Close connection"));
             }
@@ -45,6 +47,7 @@ pub async fn default_register(ctx: &mut Context<'_>) -> anyhow::Result<()> {
     *ctx.id_ref = new_id.clone();
 
     let mut write_reg = ctx.register.write().await;
+    log::info!("Writing new ID into Register");
     write_reg.push(new_id.clone());
     drop(write_reg);
 
@@ -105,9 +108,13 @@ pub async fn default_close(ctx: &mut Context<'_>) -> anyhow::Result<()> {
         }
     }
 
+    log::info!("Removing {:#?} from Register", ctx.id_ref);
     match i {
         Some(i) => write_reg.remove(i),
-        None => return Err(anyhow::anyhow!("ID Not In Register")),
+        None => {
+            log::warn!("ID '{:?}' Not Found in Register", ctx.id_ref);
+            return Err(anyhow::anyhow!("ID Not In Register"));
+        }
     };
 
     drop(write_reg);
@@ -117,6 +124,7 @@ pub async fn default_close(ctx: &mut Context<'_>) -> anyhow::Result<()> {
 }
 
 pub async fn inform_update_reg(ctx: &mut Context<'_>, kind: MessageKind) -> anyhow::Result<()> {
+    log::info!("Updating other registered Devices");
     let reg = ctx.register.read().await;
     for id in reg.iter().filter(|i| i != &ctx.id_ref) {
         let header = Header {

@@ -26,10 +26,13 @@ impl MasterConfig {
                 .unwrap()
         );
 
+        log::info!("No env path found, using default path {}", path);
+
         Self::get_from(&path)
     }
 
     pub fn get_from(path: &str) -> Result<Self, config::ConfigError> {
+        log::info!("Attempting to load config from path: {}", path);
         config::Config::builder()
             .add_source(File::new(path, FileFormat::Toml))
             .build()?
