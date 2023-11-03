@@ -12,7 +12,10 @@ impl AsyncClipboard for WindowsClipboardWrapper {
     }
 
     async fn get_new(&mut self) -> anyhow::Result<String> {
-        let old: String = clipboard_win::get_clipboard(formats::Unicode).unwrap();
+        let old: String = clipboard_win::get_clipboard(formats::Unicode).unwrap_or_else(|_| {
+            clipboard_win::set_clipboard(formats::Unicode, "Init WinClip").unwrap();
+            return String::from("Init WinClip");
+        });
         loop {
             let current: String = clipboard_win::get_clipboard(formats::Unicode).unwrap();
             if current == old {
