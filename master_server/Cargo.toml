@@ -10,8 +10,9 @@ anyhow = "1.0.75"
 async-trait = "0.1.74"
 config = { version = "0.13.3", default-features = false, features = ["toml"] }
 cross_messages = { version = "0.1.0", path = "../cross_messages" }
+crosslogging = { version = "0.1.0", path = "../crosslogging" }
 dirs = "5.0.1"
-log = "0.4.20"
+log = { version = "0.4.20", features = ["serde"] }
 master_lib = { version = "0.1.0", path = "../master_lib" }
 serde = { version = "1.0.189", features = ["derive"] }
 tokio = { version = "1.33.0", features = ["rt"] }

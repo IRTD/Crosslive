@@ -41,7 +41,10 @@ where
 
     pub async fn run(&mut self) -> anyhow::Result<()> {
         loop {
-            let msg_stream = self.listener.accept().await?;
+            let (msg_stream, addr) = self.listener.accept().await?;
+
+            log::info!("New Connection: {:?}", addr);
+
             let cloned_reg = self.register.clone();
             let cloned_board = self.sender.clone();
             let stream_handler = StreamHandler {
@@ -77,11 +80,13 @@ where
         loop {
             tokio::select! {
                 res = self.stream.recv() => {
-
                     let msg = res?;
+
+                    log::info!("New {:#?}", msg);
 
                     match msg.header.target {
                         ID::Master => {
+                            log::info!("Creating new context");
                             let ctx = Context {
                                 message: msg,
                                 register: &self.register,
@@ -107,6 +112,7 @@ where
                         continue
                     }
 
+                    log::info!("Bounced {:#?} to {:#?}", msg, self.id);
                     self.stream.send(msg).await?;
                 }
             }

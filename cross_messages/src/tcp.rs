@@ -1,5 +1,6 @@
 use std::io::ErrorKind;
 
+use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
 
@@ -20,10 +21,9 @@ impl MessageListener {
         MessageListener { inner }
     }
 
-    pub async fn accept(&self) -> std::io::Result<MessageStream> {
-        Ok(MessageStream {
-            inner: self.inner.accept().await?.0,
-        })
+    pub async fn accept(&self) -> std::io::Result<(MessageStream, SocketAddr)> {
+        let (inner, addr) = self.inner.accept().await?;
+        Ok((MessageStream { inner }, addr))
     }
 }
 
